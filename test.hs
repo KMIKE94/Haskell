@@ -1,3 +1,12 @@
+import Data.List
+
+numUniques :: (Eq a) => [a] -> Int
+-- nub is defined in Data.List and removes duplicates
+numUniques = length . nub
+
+
+-------------------------------------------------------------------------
+-------------------------------------------------------------------------
 doubleMe x = x + x
 
 -- doubleUs x y = x*2 + y*2
