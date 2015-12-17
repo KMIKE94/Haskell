@@ -1,8 +1,6 @@
 import Dist
 import Die
-import Debug.SimpleReflect.Expr
 
--- I have a dice with the probability 'dd'
 -- y0 is the pot
 -- p is the probability
 -- n is the number of rounds
@@ -51,60 +49,8 @@ import Debug.SimpleReflect.Expr
 --                                   x5 = dreidelDreidelDreidel x3 p
 --                               in x4
 
-dreidelDreidelDreidel' :: Double -> Double -> Int -> Dist Double
-dreidelDreidelDreidel' y0 p n = Dist [(y0, (1/4 ^ x)) | x <- [1..n]] >>= \x1
-                                -> Dist [(x1*p * 2.5 + y0, 1)]
-  -- Dist [((y0*p) * (2.5) + y0, (1/4) ^ x) | x <- [1..n]]
-
--- addStuff :: Int -> Int
--- addStuff = do
---     a <- (*2)
---     b <- (+10)
---     return (a+b)
-
--- >>= \y -> Dist[((y0 * p) * (1 + (1 + (1/4)^x)) + y0,(1/4)^x) | x <- [1,2..n]]
-
-
--- dreidelDreidelDreidel y0 p n = if p < 0
---                               then error "Probability less than 0"
---                               else if p > 1
---                                 then error "Probability greater than 1"
---                                 else if p == 0
---                                   then Dist [(1.0, y0)]
---                                   else (\(x, y) -> Dist [(x, y)]) lcomp (p*y0) n
-
--- lcomp py0 n= zip [1.0..fromIntegral n] [py0*x | x <- [1.0,2.0..]]
-
--- mean :: Dist Double -> Double
--- mean d = Dist [()]
-
-
--- n = Dist [('a', 0.3666666), ('b', 0.2333333), ('c', 0.4)]
--- *Main> checkProper n
--- False || True
-
--- *Main> fmap (const 'a') n
--- Dist [('a',0.3),('a',0.2),('a',0.5)]
---
--- *Main> fmap (const 'a') n
--- Dist [('a',0.3),('a',0.2),('a',0.5)]
-
--- *Main> dd
--- Dist [(0,0.25),(1,0.25),(2,0.25),(3,0.25)]
--- *Main> let d = Dist [(0, 1/5), (1, 1/5), (2,1/5),(3,1/5)]
--- *Main> d
--- Dist [(0,0.2),(1,0.2),(2,0.2),(3,0.2)]
--- *Main> normalize d
--- Dist [(0,0.25),(1,0.25),(2,0.25),(3,0.25)]
--- *Main> checkProper d
--- False
--- *Main> d
--- Dist [(0,0.2),(1,0.2),(2,0.2),(3,0.2)]
--- *Main> let x = normalize d
--- *Main> checkProper x
--- True
-
 {-
+Notes for my own understanding
 Dist a = Dist [(a ,Double)]
 Coin = Head | Tail deriving (Eq, Show)
 Coin = Dist [(Head, 1/2), (Tail, 1/2)]
@@ -119,36 +65,50 @@ let cointoss2 = Dist [(Head, 1/4), (Tail, 3/4)]
 
 let cointoss money= Dist [(money * 2, 1/4), (money / 2, 3/4)]
 cointoss 10
-Dist [(20, 0.5), (5, 0.5)] -}
+Dist [(20, 0.5), (5, 0.5)]
 
-
--- lift ::  ([(a, Double)] -> [(b, Double)]) -> Dist a -> Dist b
--- lift f (Dist a) = Dist (f a)
+Prelude> :t concatMap
+concatMap :: Foldable t => (a -> [b]) -> t a -> [b] -}
 
 unwrap ::  Dist a -> [(a, Double)]
 unwrap (Dist x) = x
 
--- chose :: Integral a => a -> a -> a
--- chose n r = factorial n `div` (factorial r * factorial (n - r))
---
--- factorial ::  (Enum a, Num a) => a -> a
--- factorial n = product [1..n]
-
 dreidelDreidelDreidel :: Double -> Double -> Int -> Dist Double
+-- $ is a function application with applies to the right
 dreidelDreidelDreidel y0 p n = Dist . last . take n $ iterate (concatMap (dr p)) [(y0, 1)]
   where dr p (y0,prob) = [(win  p y0, prob * 1/4),
                            (loss p y0, prob * 3/4)]
 
-win  p y0  = y0 - x + (10 * x)
+                          --  *Main> dreidelDreidelDreidel 100 0.5 3
+                          --  Dist [(3600.0,6.25e-2),(300.0,0.1875),(300.0,0.1875),(25.0,0.5625)]
+                          {-
+                              The result here shows a distribution for 3 rounds
+                              After the first run I will bet 50 and the run will be 250 + the original bet
+                              of 50 which gives 300
+                              Whereas you can lose the the original fifty you bet
+                          -}
+
+win  p y0  = y0 + (10 * x)
   where x = p * y0
 
 loss p y0  = y0 - x
   where x = p * y0
 
--- map' f  = foldr (\x xs -> f x : xs) []
+mean :: Dist Double -> Double
+mean = sum . fmap (\(x, p) -> x * p) . unwrap
+                          {-
+                              *Main> mean (Dist [(i,1/7) | i <- [0..6]])
+                              2.9999999999999996
 
-mean ::  Dist Double -> Double
-mean = sum . map (\(x,p) -> x * p) . unwrap
+                              Will use fmap to multiply the two values of the Dist together
+                              Once is does and saves the values it will return a Dist with the mean
+                              The function unwrap will convert the Distribution to a list of the results and
+                              sum these results
+                          -}
 
 prExceeds :: Double -> Dist Double -> Double
 prExceeds target dist = mean $ fmap (fromIntegral . fromEnum . (>= target)) dist
+                          {-
+                              *Main> prExceeds 2000 $ dreidelDreidelDreidel 1000 0.5 10
+                              0.399322509765625
+                          -}
