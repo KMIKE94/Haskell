@@ -150,5 +150,5 @@ ghci> let nouns = ["hobo","frog","pope"]
 ghci> let adjectives = ["lazy","grouchy","scheming"]  
 ghci> [adjective ++ " " ++ noun | adjective <- adjectives, noun <- nouns]  
 ["lazy hobo","lazy frog","lazy pope","grouchy hobo","grouchy frog",  
-"grouchy pope","scheming hobo","scheming frog","scheming pope"] 
+"grouchy pope","scheming hobo","scheming frog","scheming pope"]
 ```

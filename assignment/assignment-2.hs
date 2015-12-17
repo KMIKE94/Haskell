@@ -1,5 +1,6 @@
 import Dist
 import Die
+import Debug.SimpleReflect.Expr
 
 -- I have a dice with the probability 'dd'
 -- y0 is the pot
@@ -21,7 +22,7 @@ import Die
 -- Problem is x[0] -> y[1-x]
 
 -- fromIntegral :: (Integer a, Num b) => a -> b
-dreidelDreidelDreidel :: Double -> Double -> Int -> Dist Double
+-- dreidelDreidelDreidel :: Double -> Double -> Int -> Dist Double
 -- dreidelDreidelDreidel y0 p n = Dist [(x, p) | x <- [1.0, 2.0..fromIntegral n]]
 -- n = 3
 -- p = 1/2
@@ -34,13 +35,26 @@ dreidelDreidelDreidel :: Double -> Double -> Int -> Dist Double
 --                               where x = 1
 --                                     k = (y0 * p) * (1 + (1 + (1/4)^x))
 -- (y0 * p) * (1 + (1 + (1/4)^x)) + y0
--- dreidelDreidelDreidel y0 p n = Dist [(((1/4)^x), ((y0 * fromIntegral x) * p) * (1 + (1 + (1/4)^x))) | x <- [1,2..n]] >>= \y -> Dist [(t, y)]
---                                 where t = y0
+-- dreidelDreidelDreidel y0 p n =
+--                               let x1 = Dist [((y0 + (y0 * p) * (((1/4) ^ x) * 10)), (1/4) ^ x) | x <- [1..n]] >>=
+--                                             \y -> Dist [(y, 1)] >>= return . (+y0)
+--                                   x2 = x1 >>= \y -> Dist [(y, 1)]
+--                               in x2
 
-dreidelDreidelDreidel y0 p n =
 
 
--- dreidelDreidelDreidel' y0 p n =
+-- dreidelDreidelDreidel y0 p n =
+--                               let x1 = y0
+--                                   x2 = (1/4) ^ 1
+--                                   x3 = (y0 * p) * (x2 * 10) + x1
+--                                   x4 = Dist [(x3, x2)] >>= return .(+x1)
+--                                   x5 = dreidelDreidelDreidel x3 p
+--                               in x4
+
+dreidelDreidelDreidel' :: Double -> Double -> Int -> Dist Double
+dreidelDreidelDreidel' y0 p n = Dist [(y0, (1/4 ^ x)) | x <- [1..n]] >>= \x1
+                                -> Dist [(x1*p * 2.5 + y0, 1)]
+  -- Dist [((y0*p) * (2.5) + y0, (1/4) ^ x) | x <- [1..n]]
 
 -- addStuff :: Int -> Int
 -- addStuff = do
@@ -59,13 +73,13 @@ dreidelDreidelDreidel y0 p n =
 --                                   then Dist [(1.0, y0)]
 --                                   else (\(x, y) -> Dist [(x, y)]) lcomp (p*y0) n
 
-lcomp py0 n= zip [1.0..fromIntegral n] [py0*x | x <- [1.0,2.0..]]
+-- lcomp py0 n= zip [1.0..fromIntegral n] [py0*x | x <- [1.0,2.0..]]
 
 -- mean :: Dist Double -> Double
 -- mean d = Dist [()]
 
 
-n = Dist [('a', 0.3666666), ('b', 0.2333333), ('c', 0.4)]
+-- n = Dist [('a', 0.3666666), ('b', 0.2333333), ('c', 0.4)]
 -- *Main> checkProper n
 -- False || True
 
@@ -90,11 +104,6 @@ n = Dist [('a', 0.3666666), ('b', 0.2333333), ('c', 0.4)]
 -- *Main> checkProper x
 -- True
 
-
-
-
-
-
 {-
 Dist a = Dist [(a ,Double)]
 Coin = Head | Tail deriving (Eq, Show)
@@ -110,6 +119,36 @@ let cointoss2 = Dist [(Head, 1/4), (Tail, 3/4)]
 
 let cointoss money= Dist [(money * 2, 1/4), (money / 2, 3/4)]
 cointoss 10
-Dist [(20, 0.5), (5, 0.5)]
+Dist [(20, 0.5), (5, 0.5)] -}
 
--}
+
+-- lift ::  ([(a, Double)] -> [(b, Double)]) -> Dist a -> Dist b
+-- lift f (Dist a) = Dist (f a)
+
+unwrap ::  Dist a -> [(a, Double)]
+unwrap (Dist x) = x
+
+-- chose :: Integral a => a -> a -> a
+-- chose n r = factorial n `div` (factorial r * factorial (n - r))
+--
+-- factorial ::  (Enum a, Num a) => a -> a
+-- factorial n = product [1..n]
+
+dreidelDreidelDreidel :: Double -> Double -> Int -> Dist Double
+dreidelDreidelDreidel y0 p n = Dist . last . take n $ iterate (concatMap (dr p)) [(y0, 1)]
+  where dr p (y0,prob) = [(win  p y0, prob * 1/4),
+                           (loss p y0, prob * 3/4)]
+
+win  p y0  = y0 - x + (10 * x)
+  where x = p * y0
+
+loss p y0  = y0 - x
+  where x = p * y0
+
+-- map' f  = foldr (\x xs -> f x : xs) []
+
+mean ::  Dist Double -> Double
+mean = sum . map (\(x,p) -> x * p) . unwrap
+
+prExceeds :: Double -> Dist Double -> Double
+prExceeds target dist = mean $ fmap (fromIntegral . fromEnum . (>= target)) dist
