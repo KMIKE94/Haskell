@@ -40,11 +40,30 @@ ntimes = do
 
 --------------------------------------------------------------
 -- List replication
-f :: Int -> [Int] -> [Int]
-f n arr = concat $ replicate n arr
+l :: Int -> [Int] -> [Int]
+-- the following will concat the replicated list to the end
+-- of the list
+l n arr = concat $ replicate n arr
+-- This concatMap performs the replicate over each element on the
+-- list
+l' n arr = concatMap  (replicate n) arr
 
 -- This part handles the Input and Output and can be used as it is.
 -- Do not modify this part.
-main :: IO ()
-main = getContents >>=
-       mapM_ print. (\(n:arr) -> f n arr). map read. words
+listRep :: IO ()
+listRep = getContents >>=
+       mapM_ print. (\(n:arr) -> l' n arr). map read. words
+
+--------------------------------------------------------------
+f :: Int -> [Int] -> [Int]
+-- Elements of a list, with delimiter n
+-- use foldr to run through list right and check against predicate
+-- which would be the n value
+f p xs = foldr (\x xs -> if (<p) x then x : xs else xs) [] xs
+-- The Input/Output section. You do not need to change or modify this part
+main = do
+    n <- readLn :: IO Int
+    inputdata <- getContents
+    let
+        numbers = map read (lines inputdata) :: [Int]
+    putStrLn . unlines $ (map show . f n) numbers
