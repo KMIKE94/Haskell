@@ -249,9 +249,4 @@ Die has dd
 dd >>= return . (+1)
 adds 1 to the left side of the dist
 
-
-
-
-
-
 -}
